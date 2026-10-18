@@ -25,6 +25,7 @@ from email_osint import (
     check_hibp,
     EmailReport,
 )
+from phone_osint import investigate_phone, PhoneReport
 
 
 # ---------------------------------------------------------------------------
@@ -200,6 +201,45 @@ def action_batch() -> None:
     pause()
 
 
+def render_phone_report(r: PhoneReport) -> None:
+    cprint("\n  +" + "-" * 52 + "+", C.DGREEN)
+    cprint(f"  |  NUMERO: {r.raw:<42}|", C.GREEN, bold=True)
+    cprint("  +" + "-" * 52 + "+", C.DGREEN)
+    rows = [
+        ("Valido", _flag(r.valid)),
+        ("Posible", _flag(r.possible)),
+        ("E.164", f"{C.WHITE}{r.e164 or '-'}{C.RESET}"),
+        ("Internacional", f"{C.WHITE}{r.international or '-'}{C.RESET}"),
+        ("Nacional", f"{C.WHITE}{r.national or '-'}{C.RESET}"),
+        ("Pais / region", f"{C.WHITE}{r.region or '-'}{C.RESET}"),
+        ("Operadora", f"{C.CYAN}{r.carrier}{C.RESET}" if r.carrier else f"{C.GREY}no disponible{C.RESET}"),
+        ("Tipo de linea", f"{C.WHITE}{r.line_type or '-'}{C.RESET}"),
+        ("Zona horaria", f"{C.WHITE}{', '.join(r.timezones) if r.timezones else '-'}{C.RESET}"),
+    ]
+    for label, value in rows:
+        print(f"  {C.DGREEN}[>]{C.RESET} {C.GREEN}{label:<16}{C.RESET}: {value}")
+    if r.notes:
+        cprint("\n  [log]", C.YELLOW)
+        for note in r.notes:
+            cprint(f"    - {note}", C.GREY)
+
+
+def action_phone() -> None:
+    banner()
+    cprint("  >> OSINT DE NUMERO DE TELEFONO", C.GREEN, bold=True)
+    cprint("  Mejor en formato internacional, p. ej. +34600112233", C.GREY)
+    number = prompt("Introduce el numero:")
+    if not number:
+        return
+    region = prompt("Region por defecto si no hay prefijo [ES]:") or "ES"
+    print()
+    spinner("Interpretando numero", 0.5)
+    spinner("Consultando rangos de numeracion", 0.7)
+    report = investigate_phone(number, default_region=region.upper())
+    render_phone_report(report)
+    pause()
+
+
 def action_perm() -> None:
     banner()
     cprint("  >> GENERADOR DE PERMUTACIONES", C.GREEN, bold=True)
@@ -259,8 +299,9 @@ MENU = [
     ("1", "Escanear un correo (completo)", action_check),
     ("2", "Escanear varios correos (lote)", action_batch),
     ("3", "Generar permutaciones de correo", action_perm),
-    ("4", "Configurar API key de HIBP", action_setkey),
-    ("5", "Acerca de / uso etico", action_about),
+    ("4", "OSINT de numero de telefono", action_phone),
+    ("5", "Configurar API key de HIBP", action_setkey),
+    ("6", "Acerca de / uso etico", action_about),
     ("0", "Salir", None),
 ]
 
